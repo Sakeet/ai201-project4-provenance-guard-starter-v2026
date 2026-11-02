@@ -6,6 +6,14 @@ How to run it: see [RUNNING.md](RUNNING.md).
 
 ---
 
+## Stretch features (declared before building)
+
+1. **A third signal** (`cues.py`): counts formulaic transition phrases ("furthermore", "in conclusion", "it is important to note"). I will write down how the three signals are weighted.
+2. **`GET /content/<id>`**: returns one item's current status.
+3. **A verified-human path** (`POST /verify`): a writer earns a credential through an extra step, and it shows on their work.
+
+---
+
 ## What This Does
 
 1. A request arrives at `POST /submit` with JSON `text` and an optional `creator_id` (defaults to "unknown").
