@@ -87,10 +87,10 @@ With two signals only "unsure" was ever produced, and plain human texts scored 0
 
 **Results against my criteria (honest status):**
 - **Label coverage (criterion 3): partly met.** The human and unsure labels are reachable. The AI label has not been produced: my best AI sample reached 0.7199 against the 0.85 bar, because the style signal stays under about 0.47. I did not lower the threshold to force it.
-- **False positives (criterion 1):** None of my 9 human test texts was labeled AI, with two signals or three. Caveat: in the first test `plain_human` (27 words) scored 0.9024 model and 0.7838 style and was held back only by the 40-word guard, not the 0.85 bar.
-- **Score spread (criterion 2):** With three signals the AI samples (0.72, 0.69) sit about 0.3 to 0.5 above the human texts (0.23-0.46), but the spread depends on how formulaic my AI samples are.
+- **False positives (criterion 1): no false positives observed.** None of the human texts I tested was labeled AI: 9 human texts with two signals, 7 of them rerun with three signals. Caveat: in the first test `plain_human` (27 words) scored 0.9024 model and 0.7838 style and was held back only by the 40-word guard, not the 0.85 bar.
+- **Score spread (criterion 2): met on means, but not cleanly separated.** The mean of the two AI samples (about 0.70) is about 0.38 above the mean of the seven human texts (about 0.33), which meets the 0.3 target. But the lowest AI sample (0.685) is only about 0.22 above the highest human sample (0.462), and the result depends on how formulaic my AI samples are.
 - **Bad input (criterion 4): partly met.** Missing, empty and too-short text return a 400 and write no log entry. The 10000-character limit is not enforced in `app.py` yet.
-- **Appeal path (criterion 5):** A valid appeal returned 200 and wrote an `under_review` entry to the log. An unknown `content_id` returned 404 and missing reasoning returned 400.
+- **Appeal path (criterion 5): met.** A valid appeal returned 200 and wrote an `under_review` entry to the log. An unknown `content_id` returned 404 and missing reasoning returned 400.
 
 ---
 
@@ -151,35 +151,38 @@ $ curl.exe "http://127.0.0.1:5000/log?limit=3"
   "count": 3,
   "entries": [
     {
-      "content_id": "c_97ef0a0d3c4f",
-      "creator_id": "u3",
-      "event": "appeal",
-      "reasoning": "I wrote this myself for my class.",
-      "status": "under_review",
-      "timestamp": "2026-11-02T05:38:55+00:00"
-    },
-    {
-      "combined_score": 0.3218,
-      "content_id": "c_84d5f338a110",
-      "creator_id": "u4",
-      "guess": "unsure",
-      "label": "Our tools aren't perfect, and we couldn't tell whether this was written by a person or with AI. We're not drawing any conclusion about you or your work, and you don't need to do anything.",
-      "model_score": 0.3934,
-      "status": "decided",
-      "style_score": 0.2143,
-      "timestamp": "2026-11-02T06:06:56+00:00"
-    },
-    {
       "content_id": "c_84d5f338a110",
       "creator_id": "u4",
       "event": "appeal",
       "reasoning": "I wrote this myself for my class.",
       "status": "under_review",
       "timestamp": "2026-11-02T06:08:51+00:00"
+    },
+    {
+      "creator_id": "u5",
+      "event": "verification",
+      "method": "code",
+      "status": "verified_human",
+      "timestamp": "2026-11-02T06:34:55+00:00"
+    },
+    {
+      "combined_score": 0.2413,
+      "content_id": "c_0cf0d28393bf",
+      "creator_id": "u5",
+      "cue_score": 0.0,
+      "guess": "human",
+      "label": "We think this was most likely written by a person.",
+      "model_score": 0.3934,
+      "status": "decided",
+      "style_score": 0.2143,
+      "timestamp": "2026-11-02T06:35:09+00:00",
+      "verified_human": true
     }
   ]
 }
 ```
+
+These are the three newest entries: the appeal on `c_84d5f338a110` (the item submitted earlier), the `u5` verification, and the decision on `c_0cf0d28393bf`, which carries `verified_human: true`.
 
 ---
 
@@ -252,17 +255,7 @@ $ curl.exe -X POST http://127.0.0.1:5000/verify -H "Content-Type: application/js
 }
 ```
 
-The log entry for the credential, followed by the item that carries it:
-
-```json
-{
-  "creator_id": "u5",
-  "event": "verification",
-  "method": "code",
-  "status": "verified_human",
-  "timestamp": "2026-11-02T06:34:55+00:00"
-}
-```
+The `verification` entry it wrote is the middle entry in the log block above, and the `c_0cf0d28393bf` decision after it carries `verified_human: true`.
 
 ---
 
@@ -270,7 +263,7 @@ The log entry for the credential, followed by the item that carries it:
 
 **Moment 1**
 
-- *What I asked for:* Help writing my Milestone 1 notes, including the blind spot for signal one.
+- *What I asked for:* Help writing my Milestone 1 notes (path, signals, false-positive trace, endpoint shapes).
 - *What came back:* A draft saying signal one's blind spot was polished or formal human writing.
 - *What I changed:* After reading the docstring in `detector.py`, I saw that was backwards: the signal rewards common words in short sentences, so plain writers are the ones it flags. I rewrote the blind spot and my false-positive trace (a plain second-language writer), then confirmed it with a measured result (plain human text scoring 0.7128 on the model signal).
 
