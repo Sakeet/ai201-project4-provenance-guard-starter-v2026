@@ -42,63 +42,30 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
+## 1. False positives
+Of 10 pieces of my own human writing (including at least 3 plain, short-sentence pieces), at most 1 is labeled high-confidence AI, in each of 3 runs.
 
-<!-- Your criterion. It must name a number. -->
+**Why this target:** A wrong accusation costs the writer far more than a missed detection costs the site, and plain writers have the least room to argue back. I picked 1 because 0 is unrealistic for this kind of detector, but more than 1 would mean too many real writers get accused.
 
+## 2. Score spread
+The combined score for clearly-AI text is at least 0.3 higher than for clearly-human text, using 3 AI and 3 human samples, in each of 3 runs.
 
+**Why this target:** A gap of 0.3 leaves room for a real "unsure" band between the two, so all three labels can exist. A smaller gap would make the labels meaningless.
 
-**Why this target:**
+## 3. Label coverage
+I can produce each of the three labels with a real submission to /submit, and scoring.label_ranges() shows no gaps between ranges from 0.0 to 1.0.
 
+**Why this target:** An unreachable label means my thresholds are wrong, and "unsure" is the one most likely to be unreachable.
 
+## 4. Bad input
+Missing text, empty text, and text over 10000 characters each return a 400 JSON error and write no log entry.
 
----
+**Why this target:** Long text slows the model and could be used to overload the service, and rejected input should never leave a misleading entry in the log.
 
-## 2.
+## 5. Appeal path
+5 of 5 appeals I submit with a valid content_id change the status to under_review and appear in logs/audit.jsonl; an unknown content_id returns a 404.
 
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
-
----
-
-## 3.
-
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
-
----
-
-## 4.
-
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
-
----
-
-## 5.
-
-<!-- Your criterion. -->
-
-
-
-**Why this target:**
-
-
+**Why this target:** An appeal is the writer's only recourse, so it should never fail silently.
 
 ---
 
