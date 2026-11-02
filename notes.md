@@ -38,3 +38,18 @@ A second-language writer submits their own plainly written paragraph, short sent
 - **Out (200):** `{"content_id": string, "status": "under_review", "message": string}`
 - **Out (404):** `{"error": string}` if the content_id doesn't exist.
 - **Out (400):** `{"error": string}` if reasoning or content_id is missing.
+
+## 5. Combining rule
+
+**Rule (in words):** The combined score is a weighted average of the two signals, with the model signal counting more than the style signal. A submission is only called "high-confidence AI" if the combined score is very high AND both signals independently lean AI. It is only called "high-confidence human" if the combined score is low AND both signals lean human. Everything else is "unsure". If the text is too short for the statistics to mean much, the result can never be high-confidence in either direction.
+
+**Numbers (these go in config.py):**
+- Weights: 0.6 model signal, 0.4 style signal
+- High-confidence AI: combined >= 0.85 and both signals >= 0.6
+- High-confidence human: combined <= 0.30 and both signals <= 0.5
+- Unsure: everything else
+- Short-text guard: under 40 words, force "unsure"
+
+**Why:** In my test, a plainly written human paragraph scored 0.9024 on the model signal and 0.7838 on the style signal, higher than my clearly-AI text. Both signals agreed on the wrong answer, so averaging alone can't protect that writer. A wrongly accused writer costs far more than a missed AI text (criterion 1), so I accept that some AI text will land in "unsure" rather than risk accusing plain writers. The short-text guard exists because that test paragraph was only 27 words, and the statistics are noisy at that length.
+
+**Known weakness:** Plain human writing that is longer than 40 words can still score above 0.85 on both signals and be accused. The guard only helps short text. I will test a longer plain paragraph to find out how big this problem is.
