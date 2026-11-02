@@ -133,7 +133,12 @@ def submit():
     # Step 3 - one real signal that we first tested from the terminal
     # python detector.py "some text"
     import detector
-    model_score = detector.model_signal(text)
+    try:
+        model_score = detector.model_signal(text)
+    except ValueError as exc:
+        return jsonify({"error": "bad_request", "message": str(exc)}), 400
+    except detector.DetectorUnavailable as exc:
+        return jsonify({"error": "detector_unavailable", "message": str(exc)}), 503
 
     # Step 4 - log the decision. The content_id is what /appeal needs later.
     content_id = f"c_{uuid.uuid4().hex[:12]}"
