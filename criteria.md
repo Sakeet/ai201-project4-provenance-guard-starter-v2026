@@ -47,25 +47,35 @@ Of 10 pieces of my own human writing (including at least 3 plain, short-sentence
 
 **Why this target:** A wrong accusation costs the writer far more than a missed detection costs the site, and plain writers have the least room to argue back. I picked 1 because 0 is unrealistic for this kind of detector, but more than 1 would mean too many real writers get accused.
 
+**How to check:** Submit each of my 10 human-written pieces to POST /submit and count responses where guess is "ai". Pass if the count is 1 or fewer, in each of 3 runs.
+
 ## 2. Score spread
 The combined score for clearly-AI text is at least 0.3 higher than for clearly-human text, using 3 AI and 3 human samples, in each of 3 runs.
 
 **Why this target:** A gap of 0.3 leaves room for a real "unsure" band between the two, so all three labels can exist. A smaller gap would make the labels meaningless.
+
+**How to check:** Run python try_labels.py. Take the combined scores of the AI samples (ai_try, ai_a) and the human samples (human_try, human_a, human_b). Pass if mean AI minus mean human is at least 0.3, in each of 3 runs.
 
 ## 3. Label coverage
 I can produce each of the three labels with a real submission to /submit, and scoring.label_ranges() shows no gaps between ranges from 0.0 to 1.0.
 
 **Why this target:** An unreachable label means my thresholds are wrong, and "unsure" is the one most likely to be unreachable.
 
+**How to check:** Run python -c "import scoring; print(scoring.label_ranges())" and confirm the ranges cover 0.00 to 1.00 with no gap. Then submit texts to POST /submit until guess has been "human", "unsure" and "ai" at least once each. Pass only if all three appear.
+
 ## 4. Bad input
 Missing text, empty text, and text over 10000 characters each return a 400 JSON error and write no log entry.
 
 **Why this target:** Long text slows the model and could be used to overload the service, and rejected input should never leave a misleading entry in the log.
 
+**How to check:** POST {}, {"text": ""} and a 10001-character string to /submit. Pass if each returns 400 and GET /log shows no new entry.
+
 ## 5. Appeal path
 5 of 5 appeals I submit with a valid content_id change the status to under_review and appear in logs/audit.jsonl; an unknown content_id returns a 404.
 
 **Why this target:** An appeal is the writer's only recourse, so it should never fail silently.
+
+**How to check:** POST 5 appeals with a real content_id to /appeal. Pass if all 5 return 200 under_review and appear in GET /log; POST one unknown id and expect 404.
 
 ---
 
