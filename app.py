@@ -2,26 +2,14 @@
 """
 Provenance Guard — the web service.
 
-    python app.py
-
-Then, in another terminal:
-
-    curl -X POST http://127.0.0.1:5000/ping \
-      -H "Content-Type: application/json" \
-      -d '{"message": "hello"}'
-
-That's the example route. It works right now, before you've written anything.
-**Leave it alone** — it's your control. When something breaks later, check that
-`/ping` still answers: if it does, the problem is in your handler; if it
-doesn't, it's the service itself.
-
 Routes:
-
-    POST /ping        the worked example. Already works. Don't edit it
-    POST /submit      ← YOU BUILD THIS (Milestone 3, 4, 5)
-    POST /appeal      ← YOU BUILD THIS (Milestone 5)
-    GET  /log         the audit log. Already works
-    GET  /health      is the service up, and is the model loaded
+    POST /ping          the worked example. Don't edit it
+    POST /submit        judge a piece of text
+    POST /appeal        a writer disputes a decision
+    POST /verify        a writer earns the verified-human credential (stretch)
+    GET  /content/<id>  one item's current status (stretch)
+    GET  /log           the audit log
+    GET  /health        is the service up, and is the model loaded
 """
 
 import uuid
@@ -102,25 +90,12 @@ def health():
     })
 
 
-# ── YOU BUILD THIS ────────────────────────────────────────────────────────────
+# ── The build ─────────────────────────────────────────────────────────────────
 
 @app.post("/submit")
 # @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
-    """
-    Take a piece of text, decide about it, log the decision, answer.
-
-    ── STATUS ──
-    Pass 1 done: hardcoded response confirmed via curl.
-    Pass 2 done: text/creator_id pulled out, bad input rejected with 400.
-    Step 3 done: real model_score from detector.model_signal(text).
-    Step 4 done: real content_id generated and logged via audit.log_decision.
-    Milestone 4 done: style_signal + combine_signals wired in, all three
-    scores logged.
-
-    Still TODO:
-      - (Milestone 5) write the real label text in scoring.score_to_label
-    """
+    """Take a piece of text, decide about it, log the decision, answer."""
     payload = request.get_json(silent=True) or {}
     text = payload.get("text")
     creator_id = payload.get("creator_id", "unknown")
@@ -128,7 +103,7 @@ def submit():
     if not isinstance(text, str) or not text.strip():
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
 
-    # Signal 1 - the model signal (tested first from the terminal)
+    # Signal 1 - the model signal
     import detector
     try:
         model_score = detector.model_signal(text)
@@ -137,18 +112,22 @@ def submit():
     except detector.DetectorUnavailable as exc:
         return jsonify({"error": "detector_unavailable", "message": str(exc)}), 503
 
-    # Signal 2 - the style signal, then combine (rule: scoring.py::combine_signals)
-    import stylometry
+    # Signals 2 and 3, then combine (rule: scoring.py::combine_signals)
+    import cues
     import scoring
+    import stylometry
 
     style_score = stylometry.style_signal(text)
+    cue_score = cues.cue_signal(text)
     word_count = len(stylometry.words(text))
-    combined = scoring.combine_signals(model_score, style_score, word_count)
+    combined = scoring.combine_signals(model_score, style_score, word_count, cue_score)
     guess, label = scoring.score_to_label(combined)
     # confidence = distance from the uncertain middle: 0 = no idea, 1 = certain
     confidence = round(abs(combined - 0.5) * 2, 4)
 
-    # Log the decision. The content_id is what /appeal needs later.
+    # Verified-human credential (stretch): shown on the work, never changes the score.
+    verified = audit.is_verified(creator_id)
+
     content_id = f"c_{uuid.uuid4().hex[:12]}"
     audit.log_decision(
         content_id=content_id,
@@ -159,6 +138,8 @@ def submit():
         guess=guess,
         label=label,
         status="decided",
+        cue_score=cue_score,
+        verified_human=verified,
     )
 
     return jsonify({
@@ -168,8 +149,11 @@ def submit():
         "label": label,
         "model_score": model_score,
         "style_score": style_score,
+        "cue_score": cue_score,
         "combined_score": combined,
+        "verified_human": verified,
     }), 200
+
 
 @app.post("/appeal")
 def appeal():
@@ -192,8 +176,7 @@ def appeal():
     if not history:
         return jsonify({"error": "not_found", "message": "No submission found with that content_id."}), 404
 
-    # The creator comes from the original decision, not from the request,
-    # so an appeal is always recorded against the real author.
+    # The creator comes from the original decision, not from the request.
     creator_id = history[0].get("creator_id", "unknown")
     audit.log_appeal(content_id=content_id, creator_id=creator_id, reasoning=reasoning)
 
@@ -201,6 +184,52 @@ def appeal():
         "content_id": content_id,
         "status": "under_review",
         "message": "Thanks. Your appeal has been recorded and this work is now marked as under review.",
+    }), 200
+
+
+@app.post("/verify")
+def verify():
+    """
+    Verified-human path (stretch). A writer earns a credential through an extra
+    step: presenting the verification code. Work they submit afterwards carries
+    verified_human: true. The credential is shown, it never changes the score.
+
+    Expects JSON: {"creator_id": "...", "code": "..."}
+    """
+    payload = request.get_json(silent=True) or {}
+    creator_id = payload.get("creator_id")
+    code = payload.get("code")
+
+    if not isinstance(creator_id, str) or not creator_id.strip() or creator_id == "unknown":
+        return jsonify({"error": "bad_request", "message": "Send JSON with a real \"creator_id\"."}), 400
+    if code != config.VERIFY_CODE:
+        return jsonify({"error": "forbidden", "message": "That verification code is not valid."}), 403
+
+    audit.log_verification(creator_id=creator_id, method="code")
+    return jsonify({
+        "creator_id": creator_id,
+        "status": "verified_human",
+        "message": "Verified. Work you submit from now on will show a verified-human credential.",
+    }), 200
+
+
+@app.get("/content/<content_id>")
+def get_content(content_id):
+    """Stretch: one item's current status, from the append-only log."""
+    history = audit.entries_for(content_id)
+    if not history:
+        return jsonify({"error": "not_found", "message": "No submission found with that content_id."}), 404
+
+    decision = next((e for e in history if "event" not in e), history[0])
+    return jsonify({
+        "content_id": content_id,
+        "creator_id": decision.get("creator_id"),
+        "status": history[-1].get("status"),
+        "guess": decision.get("guess"),
+        "label": decision.get("label"),
+        "combined_score": decision.get("combined_score"),
+        "verified_human": decision.get("verified_human", False),
+        "appealed": any(e.get("event") == "appeal" for e in history),
     }), 200
 
 
@@ -218,11 +247,6 @@ def main():
     print(f"  detector model:  {config.DETECTOR_MODEL}")
     print(f"  rate limiting:   {'ON' if config.RATE_LIMITING_ENABLED else 'off (unit 8)'}")
     print(f"  audit log:       {config.AUDIT_LOG}")
-    print()
-    print("Check it's alive:")
-    print(f'  curl -X POST http://{config.HOST}:{config.PORT}/ping \\')
-    print('    -H "Content-Type: application/json" \\')
-    print("    -d '{\"message\": \"hello\"}'")
     print()
     app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
 

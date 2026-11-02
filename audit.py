@@ -155,3 +155,18 @@ def clear() -> int:
 def entries_for(content_id: str) -> list[dict]:
     """Every entry touching one content id, in order."""
     return [e for e in read_entries() if e.get("content_id") == content_id]
+
+def log_verification(creator_id: str, method: str) -> dict:
+    """Record that a writer earned the verified-human credential."""
+    return _append({
+        "timestamp": _now(),
+        "creator_id": creator_id,
+        "event": "verification",
+        "status": "verified_human",
+        "method": method,
+    })
+
+
+def is_verified(creator_id: str) -> bool:
+    return any(e.get("event") == "verification" and e.get("creator_id") == creator_id
+               for e in read_entries())
