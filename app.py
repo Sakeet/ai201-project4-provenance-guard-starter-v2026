@@ -115,23 +115,20 @@ def submit():
     Pass 2 done: text/creator_id pulled out, bad input rejected with 400.
     Step 3 done: real model_score from detector.model_signal(text).
     Step 4 done: real content_id generated and logged via audit.log_decision.
+    Milestone 4 done: style_signal + combine_signals wired in, all three
+    scores logged.
 
-    Still TODO (Milestone 4 onward):
-      - call stylometry.style_signal(text) for a second, different signal
-      - combine model_score + style_score via scoring.combine_signals(...)
-      - log both signal scores + the combined one (not just model_score)
-      - (Milestone 5) scoring.score_to_label(...) for the real label, and
-        put the real `guess` + `confidence` in the response too
+    Still TODO:
+      - (Milestone 5) write the real label text in scoring.score_to_label
     """
     payload = request.get_json(silent=True) or {}
     text = payload.get("text")
-    creator_id = payload.get("creator_id","unknown")
+    creator_id = payload.get("creator_id", "unknown")
 
     if not isinstance(text, str) or not text.strip():
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
 
-    # Step 3 - one real signal that we first tested from the terminal
-    # python detector.py "some text"
+    # Signal 1 - the model signal (tested first from the terminal)
     import detector
     try:
         model_score = detector.model_signal(text)
@@ -140,22 +137,38 @@ def submit():
     except detector.DetectorUnavailable as exc:
         return jsonify({"error": "detector_unavailable", "message": str(exc)}), 503
 
-    # Step 4 - log the decision. The content_id is what /appeal needs later.
+    # Signal 2 - the style signal, then combine (rule: scoring.py::combine_signals)
+    import stylometry
+    import scoring
+
+    style_score = stylometry.style_signal(text)
+    word_count = len(stylometry.words(text))
+    combined = scoring.combine_signals(model_score, style_score, word_count)
+    guess, label = scoring.score_to_label(combined)
+    # confidence = distance from the uncertain middle: 0 = no idea, 1 = certain
+    confidence = round(abs(combined - 0.5) * 2, 4)
+
+    # Log the decision. The content_id is what /appeal needs later.
     content_id = f"c_{uuid.uuid4().hex[:12]}"
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
         model_score=model_score,
+        style_score=style_score,
+        combined_score=combined,
+        guess=guess,
+        label=label,
         status="decided",
     )
 
     return jsonify({
         "content_id": content_id,
-        "guess": "unsure",
-        "confidence": 0.5,
-        "label": "not built yet",
+        "guess": guess,
+        "confidence": confidence,
+        "label": label,
         "model_score": model_score,
-        "style_score": None,
+        "style_score": style_score,
+        "combined_score": combined,
     }), 200
 
 
