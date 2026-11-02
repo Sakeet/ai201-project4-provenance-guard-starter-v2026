@@ -20,9 +20,10 @@ How to run it: see [RUNNING.md](RUNNING.md).
 2. Validation: `text` must be a non-empty string, otherwise the service returns a 400 `bad_request`. Rejected input writes no log entry.
 3. Signal one (`detector.py`, gpt2 running locally) produces `model_score`. Text under 3 tokens returns a 400, and a model that can't load returns a 503.
 4. Signal two (`stylometry.py`) produces `style_score` from the shape of the text.
-5. `scoring.py::combine_signals` merges the two scores and the word count into one combined score.
-6. `scoring.py::score_to_label` turns the combined score into a guess (ai / human / unsure) and the plain-English label.
-7. A `content_id` is generated and the decision (all three scores, guess, label, status "decided") is appended to `logs/audit.jsonl`, then the JSON is returned.
+5. Signal three (`cues.py`, stretch) produces `cue_score` from formulaic transition phrases.
+6. `scoring.py::combine_signals` merges the three scores and the word count into one combined score.
+7. `scoring.py::score_to_label` turns the combined score into a guess (ai / human / unsure) and the plain-English label.
+8. A `content_id` is generated and the decision (all scores, guess, label, status "decided", verified_human) is appended to `logs/audit.jsonl`, then the JSON is returned.
 
 `POST /appeal` takes a `content_id` and the writer's reasoning, checks the ID exists (404 if not, 400 if fields are missing), and appends a second log entry with status `under_review`. The log is append-only, so the original decision stays in place and the appeal sits after it. There is no automatic re-checking.
 
@@ -48,19 +49,46 @@ How to run it: see [RUNNING.md](RUNNING.md).
 
 **What it can't see:** Meaning. Anything that changes the shape without changing the substance moves it: typos, split sentences, a pasted quotation. It is also noisy on short text. In my tests it never rose above about 0.47 on any text, human or AI, so it separates the two classes only weakly.
 
+### Signal three — the cue signal (stretch)
+
+**What it measures:** Formulaic transition phrases per sentence ("furthermore", "moreover", "in conclusion", "it is important to note", "plays a crucial role", and similar). 0.8 or more cue phrases per sentence scores 1.0 (higher = more likely AI).
+
+**Why that might differ between human and AI writing:** Generated prose leans on stock connectives. My casual human texts used almost none.
+
+**What it can't see:** Anything outside a fixed phrase list. Formal human writing (reports, essays) uses these phrases too, and anyone can evade it by avoiding the list. In my tests it read exactly 0.0 on every human text and 1.0 on both AI samples, which says more about how formulaic my AI samples are than about real-world accuracy.
+
 ### The combining rule
 
-**The rule:** A weighted average, with guards. "High-confidence AI" needs a very high combined score AND both signals leaning AI. "High-confidence human" needs a low combined score AND both signals leaning human. Text under 40 words can never be confident either way. Everything else is "unsure".
+**The rule:** A weighted average, with guards. "High-confidence AI" needs a very high combined score AND the signals agreeing (all signals at or above 0.6 with two signals; at least two of three with three signals). "High-confidence human" needs a low combined score AND every signal at or below 0.5. Text under 40 words can never be confident either way. Everything else is "unsure".
 
-**The numbers:** Weights 0.6 model / 0.4 style. AI: combined >= 0.85 and both signals >= 0.6. Human: combined <= 0.30 and both signals <= 0.5. Minimum 40 words. All of these are in `config.py`.
+**The numbers:** Two signals: 0.6 model / 0.4 style. Three signals (used by `/submit`): 0.45 model / 0.30 style / 0.25 cue. AI: combined >= 0.85. Human: combined <= 0.30. Agreement bars: 0.6 (AI) and 0.5 (human). Minimum 40 words. All of these are in `config.py`.
+
+**How the three signals are weighted (stretch note):** The model signal keeps the largest weight (0.45) because it is the only one that reads the text through a language model. The style signal gets 0.30 because it was the weakest separator in my tests (it never exceeded about 0.47). The cue signal gets 0.25 because it is the easiest to evade and reads only 0 or 1 on my samples, so I did not let it dominate. I chose these before running the three-signal test and did not tune them afterwards.
 
 **Where it lives:** `scoring.py::combine_signals` (numbers in `config.py`)
 
-**A case where my two signals split, and what my rule does with it:** My clearly-AI sample scored model 0.7544 but style 0.459, so the average is about 0.64 and it lands in "unsure". The reverse split also happens: `human_b` scored model 0.5227 and style 0.0009 (combined 0.314). The style signal read it as very human, but the model signal sat above 0.5, so the agreement guard keeps it out of "human". This is deliberate: when the signals disagree the rule says "unsure", because a wrong accusation costs a writer more than a missed detection costs the site.
+**A case where my signals split, and what my rule does with it:** My clearly-AI sample scored model 0.7544 but style 0.459, so it lands in "unsure". The reverse split also happens: `human_b` scored model 0.5227 and style 0.0009 (combined 0.31). The style signal read it as very human, but the model signal sat above 0.5, so the agreement guard keeps it out of "human". This is deliberate: when signals disagree the rule says "unsure", because a wrong accusation costs a writer more than a missed detection costs the site.
+
+**What the third signal changed (9 test texts, three signals):**
+
+| Text | Words | Model | Style | Cue | Combined | Label |
+|---|---|---|---|---|---|---|
+| ai_try | 58 | 0.7533 | 0.4365 | 1.0 | 0.7199 | unsure |
+| ai_a | 53 | 0.7368 | 0.345 | 1.0 | 0.6851 | unsure |
+| human_try | 77 | 0.351 | 0.2563 | 0.0 | 0.2348 | human |
+| human_a | 57 | 0.4999 | 0.0075 | 0.0 | 0.2272 | human |
+| human_b | 53 | 0.5227 | 0.0009 | 0.0 | 0.31 | unsure |
+| human_c | 54 | 0.4989 | 0.0566 | 0.0 | 0.2415 | human |
+| human_d | 82 | 0.6557 | 0.3353 | 0.0 | 0.3957 | unsure |
+| human_e | 81 | 0.7128 | 0.4712 | 0.0 | 0.4621 | unsure |
+| human_f | 80 | 0.5997 | 0.4622 | 0.0 | 0.4085 | unsure |
+
+With two signals only "unsure" was ever produced, and plain human texts scored 0.53-0.62 combined (`human_e` 0.6162). With the cue signal, plain human texts dropped by 0.13-0.15 (`human_e` to 0.4621) and the human label became reachable.
 
 **Results against my criteria (honest status):**
-- **Label coverage (criterion 3): not met.** Across more than 10 test texts only "unsure" was ever produced. The closest human text reached combined 0.3029, which is 0.0029 over the 0.30 bar. The best AI sample reached 0.6266, far below 0.85, because the style signal tops out near 0.47 and a 0.6/0.4 average can't reach the bar. I did not lower the thresholds to force a label. The fix belongs upstream, in a style signal that rises on AI text.
-- **False positives (criterion 1):** None of my 9 human test texts were labeled AI. One caveat: `plain_human` (27 words) scored 0.9024 on the model signal and 0.7838 on the style signal, and was held back only by the 40-word guard, not by the 0.85 bar. Other plain human texts scored 0.53-0.62 combined, so the risk is real, and the high AI bar plus the short-text guard are what protect those writers.
+- **Label coverage (criterion 3): partly met.** The human and unsure labels are reachable. The AI label has not been produced: my best AI sample reached 0.7199 against the 0.85 bar, because the style signal stays under about 0.47. I did not lower the threshold to force it.
+- **False positives (criterion 1):** None of my 9 human test texts was labeled AI, with two signals or three. Caveat: in the first test `plain_human` (27 words) scored 0.9024 model and 0.7838 style and was held back only by the 40-word guard, not the 0.85 bar.
+- **Score spread (criterion 2):** With three signals the AI samples (0.72, 0.69) sit about 0.3 to 0.5 above the human texts (0.23-0.46), but the spread depends on how formulaic my AI samples are.
 - **Bad input (criterion 4): partly met.** Missing, empty and too-short text return a 400 and write no log entry. The 10000-character limit is not enforced in `app.py` yet.
 - **Appeal path (criterion 5):** A valid appeal returned 200 and wrote an `under_review` entry to the log. An unknown `content_id` returned 404 and missing reasoning returned 400.
 
@@ -80,7 +108,7 @@ How to run it: see [RUNNING.md](RUNNING.md).
 
 ## Sample Run
 
-**A submission**
+**A submission** (the first run, before the stretch features)
 
 ```bash
 $ curl.exe -X POST http://127.0.0.1:5000/submit -H "Content-Type: application/json" -d '{"text": "I did not sleep. Not properly, anyway. I lay there listening to the boiler tick and thinking about the thing I said at the pub, which was stupid, and which he will absolutely bring up again. So: coffee, and the long way round to work, and a plan. The plan lasted until about ten past nine.", "creator_id": "u4"}'
@@ -150,6 +178,89 @@ $ curl.exe "http://127.0.0.1:5000/log?limit=3"
       "timestamp": "2026-11-02T06:08:51+00:00"
     }
   ]
+}
+```
+
+---
+
+## Stretch: what each feature changed
+
+### Third signal (`cues.py`)
+
+It changed which labels are reachable: the human label now appears (three of my human texts reached it) and plain human writing scores lower. The weighting note and the nine-text table are under Signals and Scoring above. A real submission through the service now returns `cue_score`:
+
+```json
+{
+  "combined_score": 0.2413,
+  "confidence": 0.5174,
+  "content_id": "c_0cf0d28393bf",
+  "cue_score": 0.0,
+  "guess": "human",
+  "label": "We think this was most likely written by a person.",
+  "model_score": 0.3934,
+  "style_score": 0.2143,
+  "verified_human": true
+}
+```
+
+### `GET /content/<id>`
+
+It returns one item's current status from the append-only log: the latest status, the original guess and label, and whether it was appealed.
+
+```bash
+$ curl.exe http://127.0.0.1:5000/content/c_0cf0d28393bf
+```
+
+```json
+{
+  "appealed": false,
+  "combined_score": 0.2413,
+  "content_id": "c_0cf0d28393bf",
+  "creator_id": "u5",
+  "guess": "human",
+  "label": "We think this was most likely written by a person.",
+  "status": "decided",
+  "verified_human": true
+}
+```
+
+### Verified-human path (`POST /verify`)
+
+The extra step is presenting a verification code (a stand-in for a real out-of-band check such as an emailed code or ID check). A wrong code is refused with a 403 and writes nothing. A correct code writes a `verification` entry, and every later submission from that `creator_id` carries `verified_human: true`, shown in the `/submit` and `/content/<id>` responses above and in the log. The credential is displayed only: it never changes the score or label.
+
+```bash
+$ curl.exe -X POST http://127.0.0.1:5000/verify -H "Content-Type: application/json" -d '{"creator_id": "u5", "code": "wrong"}'
+```
+
+```json
+{
+  "message": "That verification code is not valid."
+}
+```
+
+(This is the refused response with status 403; the `error` field scrolled off in my terminal.)
+
+```bash
+$ curl.exe -X POST http://127.0.0.1:5000/verify -H "Content-Type: application/json" -d '{"creator_id": "u5", "code": "writer-pledge-2026"}'
+```
+
+```json
+{
+  "creator_id": "u5",
+  "message": "Verified. Work you submit from now on will show a verified-human credential.",
+  "status": "verified_human"
+}
+```
+
+The log entry for the credential, followed by the item that carries it:
+
+```json
+{
+  "creator_id": "u5",
+  "event": "verification",
+  "method": "code",
+  "status": "verified_human",
+  "timestamp": "2026-11-02T06:34:55+00:00"
 }
 ```
 
