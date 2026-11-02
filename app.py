@@ -171,29 +171,37 @@ def submit():
         "combined_score": combined,
     }), 200
 
-
 @app.post("/appeal")
 def appeal():
     """
-    A writer says you got it wrong. ← TODO — Milestone 5
+    A writer says we got it wrong. Records the appeal beside the original
+    decision and moves the item to under_review. No automatic re-checking.
 
-    Expects JSON:
-        {"content_id": "...", "reasoning": "..."}
-
-    Should:
-      1. Check the content_id actually exists — audit.entries_for(id) tells you.
-      2. Record the appeal with audit.log_appeal(...), which moves the item to
-         under_review.
-      3. Confirm to the writer. No automatic re-checking needed.
+    Expects JSON: {"content_id": "...", "reasoning": "..."}
     """
     payload = request.get_json(silent=True) or {}
+    content_id = payload.get("content_id")
+    reasoning = payload.get("reasoning")
 
-    # TODO: delete this and build the route.
+    if not isinstance(content_id, str) or not content_id.strip():
+        return jsonify({"error": "bad_request", "message": "Send JSON with a \"content_id\"."}), 400
+    if not isinstance(reasoning, str) or not reasoning.strip():
+        return jsonify({"error": "bad_request", "message": "Send JSON with your \"reasoning\"."}), 400
+
+    history = audit.entries_for(content_id)
+    if not history:
+        return jsonify({"error": "not_found", "message": "No submission found with that content_id."}), 404
+
+    # The creator comes from the original decision, not from the request,
+    # so an appeal is always recorded against the real author.
+    creator_id = history[0].get("creator_id", "unknown")
+    audit.log_appeal(content_id=content_id, creator_id=creator_id, reasoning=reasoning)
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal isn't built yet — see the TODO in app.py.",
-        "you_sent": payload,
-    }), 501
+        "content_id": content_id,
+        "status": "under_review",
+        "message": "Thanks. Your appeal has been recorded and this work is now marked as under review.",
+    }), 200
 
 
 # ── Already works ─────────────────────────────────────────────────────────────
