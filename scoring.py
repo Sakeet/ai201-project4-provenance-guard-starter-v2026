@@ -18,30 +18,40 @@ you claim, so that line should read `scoring.py::combine_signals`.
 
 import config
 
-def combine_signals(model_score: float, style_score: float, word_count: int = 999) -> float:
+def combine_signals(model_score: float, style_score: float, word_count: int = 999,
+                    cue_score: float | None = None) -> float:
     """
-    Weighted average (0.6 model, 0.4 style), with two guards that keep a
-    result out of the confident bands unless the evidence is strong:
-      - the signals must both agree before AI/human confidence is allowed
-      - text under MIN_WORDS can never be confident either way
+    Two signals: 0.6/0.4 weighted average. Three signals: 0.45/0.30/0.25.
+    Guards: AI needs the signals to agree (all of them with two signals, at
+    least two of three with three signals); human needs every signal <= 0.5;
+    text under MIN_WORDS can never be confident either way.
     """
-    score = (
-        config.WEIGHT_MODEL_SIGNAL * model_score
-        + config.WEIGHT_STYLE_SIGNAL * style_score
-    )
+    if cue_score is None:
+        scores = [model_score, style_score]
+        score = (config.WEIGHT_MODEL_SIGNAL * model_score
+                 + config.WEIGHT_STYLE_SIGNAL * style_score)
+        votes_needed = 2
+    else:
+        scores = [model_score, style_score, cue_score]
+        score = (config.WEIGHT3_MODEL * model_score
+                 + config.WEIGHT3_STYLE * style_score
+                 + config.WEIGHT3_CUE * cue_score)
+        votes_needed = 2
 
     just_below_ai = config.AI_THRESHOLD - 0.01
     just_above_human = config.HUMAN_THRESHOLD + 0.01
 
-    if score >= config.AI_THRESHOLD and min(model_score, style_score) < config.AI_AGREE_MIN:
+    ai_votes = sum(1 for s in scores if s >= config.AI_AGREE_MIN)
+    if cue_score is None:
+        votes_needed = len(scores)
+    if score >= config.AI_THRESHOLD and ai_votes < votes_needed:
         score = just_below_ai
-    if score <= config.HUMAN_THRESHOLD and max(model_score, style_score) > config.HUMAN_AGREE_MAX:
+    if score <= config.HUMAN_THRESHOLD and max(scores) > config.HUMAN_AGREE_MAX:
         score = just_above_human
     if word_count < config.MIN_WORDS:
         score = min(max(score, just_above_human), just_below_ai)
 
     return round(score, 4)
-
 
 def score_to_label(score: float) -> tuple[str, str]:
     """

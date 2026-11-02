@@ -62,6 +62,15 @@ AI_AGREE_MIN = 0.6      # high-confidence AI needs BOTH signals at or above this
 HUMAN_AGREE_MAX = 0.5   # high-confidence human needs BOTH signals at or below this
 MIN_WORDS = 40          # under this many words, the result is forced to "unsure"
 
+# Three-signal weights (stretch: third signal). Used when the cue signal is present.
+WEIGHT3_MODEL = 0.45
+WEIGHT3_STYLE = 0.30
+WEIGHT3_CUE = 0.25
+
+# Verified-human path (stretch). A stand-in for an out-of-band check
+# such as an emailed code or an ID check.
+VERIFY_CODE = os.getenv("AI201_VERIFY_CODE", "writer-pledge-2026")
+
 # ─── Thresholds (Milestone 5) ────────────────────────────────────────────────
 # Where one label becomes another. Scores run 0.0 (confidently human) to 1.0
 # (confidently AI).
