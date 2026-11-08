@@ -93,7 +93,7 @@ def health():
 # ── The build ─────────────────────────────────────────────────────────────────
 
 @app.post("/submit")
-# @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
+@limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """Take a piece of text, decide about it, log the decision, answer."""
     payload = request.get_json(silent=True) or {}
@@ -101,6 +101,7 @@ def submit():
     creator_id = payload.get("creator_id", "unknown")
 
     if not isinstance(text, str) or not text.strip():
+        audit.log_rejection(creator_id=creator_id, reason="missing_text")
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
 
     # Signal 1 - the model signal
@@ -108,8 +109,10 @@ def submit():
     try:
         model_score = detector.model_signal(text)
     except ValueError as exc:
+        audit.log_rejection(creator_id=creator_id, reason="bad_input")
         return jsonify({"error": "bad_request", "message": str(exc)}), 400
     except detector.DetectorUnavailable as exc:
+        audit.log_rejection(creator_id=creator_id, reason="detector_unavailable")
         return jsonify({"error": "detector_unavailable", "message": str(exc)}), 503
 
     # Signals 2 and 3, then combine (rule: scoring.py::combine_signals)

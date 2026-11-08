@@ -278,6 +278,7 @@ The `verification` entry it wrote is the middle entry in the log block above, an
 <!-- ═══════════════════════ UNIT 8 — THE TEST (to be filled next unit) ═══════════════════════ -->
 
 ## Rate Limiting
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 
 ## Attack Run — Before
 
