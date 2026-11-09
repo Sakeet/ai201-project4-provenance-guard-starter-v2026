@@ -96,13 +96,21 @@ def health():
 @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """Take a piece of text, decide about it, log the decision, answer."""
-    payload = request.get_json(silent=True) or {}
+    # UNIT 8, MILESTONE 5 (the one improvement): validate the input at the route.
+    # The body must be a JSON object, and text must be 10,000 characters or fewer.
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        audit.log_rejection(creator_id="unknown", reason="body_not_object")
+        return jsonify({"error": "bad_request", "message": "Send a JSON object."}), 400
     text = payload.get("text")
     creator_id = payload.get("creator_id", "unknown")
 
     if not isinstance(text, str) or not text.strip():
         audit.log_rejection(creator_id=creator_id, reason="missing_text")
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
+    if len(text) > 10000:
+        audit.log_rejection(creator_id=creator_id, reason="text_too_long")
+        return jsonify({"error": "bad_request", "message": "Text must be 10,000 characters or fewer."}), 400
 
     # Signal 1 - the model signal
     import detector
