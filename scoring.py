@@ -26,6 +26,13 @@ def combine_signals(model_score: float, style_score: float, word_count: int = 99
     least two of three with three signals); human needs every signal <= 0.5;
     text under MIN_WORDS can never be confident either way.
     """
+    # UNIT 8 STRETCH (second improvement): a cue score of 0 means "no cue
+    # phrases found", not evidence of a human. Counting it at weight 0.25 capped
+    # every cue-free text at 0.75 (so "ai" was unreachable) and dragged EV05
+    # into "human". With no cue phrases, fall back to the two-signal weights.
+    if cue_score == 0:
+        cue_score = None
+
     if cue_score is None:
         scores = [model_score, style_score]
         score = (config.WEIGHT_MODEL_SIGNAL * model_score

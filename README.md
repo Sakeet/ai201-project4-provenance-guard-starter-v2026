@@ -644,10 +644,109 @@ From `results/attack_run_2026-11-09_0107_after.md`, same format and same verdict
 
 **What it didn't fix:** emoji, control characters and right-to-left text are under 10,000 characters and are still JSON objects, so they still get scored. "ai" is still unreachable. Criterion 4's "no log entry" part still conflicts with logging rejections.
 
+## Stretch: Second Improvement (measured)
+
+Declared in the README before I built it (see "Unit 8 stretch" near the top).
+
+**What I changed (one change, in `scoring.py::combine_signals`):** when `cue_score` is 0, the rule now falls back to the two-signal weights (0.6 model / 0.4 style) instead of counting the 0 as "human" evidence at weight 0.25. Everything else, including the Milestone 5 route validation, stayed the same.
+
+**Why:** my diagnosis of criterion 3 and EV05 put both in the combining rule. With cue = 0 every text was capped at 0.75, so "ai" was unreachable, and EV05 was dragged from 0.302 into "human" at 0.2267.
+
+### Third run log (after2)
+
+Criteria 1 and 4: `run_eval.py --label after2` → `results/run_2026-11-09_0119_after2.md`. Criteria 2 and 3: `try_labels.py` ×3 plus the after2 attack run.
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. My writing labeled AI | ≤ 1 of 10 | 0/9 | 0/9 | 0/9 | MET (on 9 pieces) |
+| 2. Score spread (mean AI − mean human) | ≥ 0.30 | 0.3925 | 0.3925 | 0.3925 | MET (down from 0.445) |
+| 3. All three labels reachable | 3 of 3 | 3/3 via /submit (EV10 "ai", PI02 "human") | same (deterministic) | same | MET, see note |
+| 4. Bad input → 400, no log entry | 3 of 3 | 400 ×3, logged | 400 ×3, logged | 400 ×3, logged | MISSED (log part) |
+| 5. Appeals | 5/5 + 404 | not re-run | not re-run | not re-run | MET (unchanged; this change doesn't touch /appeal) |
+
+Notes:
+- **Criterion 2:** AI mean unchanged at 0.7025 (both AI samples have cue = 1.0, so they still use the three-signal weights). Human mean rose to 0.3100 (human_try 0.3131, human_a 0.3029, human_b 0.314).
+- **Criterion 3:** "ai" is now reachable for the first time: EV10 scored 0.9358 with both signals ≥ 0.6. "human" is still reachable through PI02 (0.2528). But the try_labels samples now produce **only "unsure"**: the three human samples that used to be labeled human (0.2348, 0.2272, 0.2415) now score 0.3131, 0.3029 and 0.322, just above the 0.30 line. ai_try (0.7199) and ai_a (0.6851) are unchanged because they have cue = 1.0.
+
+### Every attack, with its outcome and verdict (after2)
+
+From `results/attack_run_2026-11-09_0119_after2.md`, same format and rules. **53 held, 3 broke (was 52 held, 4 broke after the first fix).**
+
+| ID | Family | Targeting | Status | Content ID | Guess | Confidence | Verdict |
+|---|---|---|---|---|---|---|---|
+| EV01 | evasion | signal two: typos raise word variety | 200 | `c_ca21cfb06c85` | unsure | 0.392 | HELD |
+| EV02 | evasion | signal two: broken-up sentences raise length spread | 200 | `c_3a4ee4c47edc` | unsure | 0.226 | HELD |
+| EV03 | evasion | signal two: a pasted quotation changes the shape | 200 | `c_8ee56c962e0e` | unsure | 0.117 | HELD |
+| EV04 | evasion | signal one: unusual words raise perplexity | 200 | `c_555bb0df97cf` | unsure | 0.007 | HELD |
+| EV05 | evasion | both signals: heavy human editing pass | 200 | `c_05d480cb0854` | unsure | 0.396 | HELD |
+| EV06 | evasion | signal two: one very long sentence and one very short | 200 | `c_dfa553a10b02` | unsure | 0.024 | HELD |
+| EV07 | evasion | signal two: padding with punctuation | 200 | `c_ca4c794a12d9` | unsure | 0.271 | HELD |
+| EV08 | evasion | signal one: text below the token window | 200 | `c_bfb9b27b52ad` | unsure | 0.217 | HELD |
+| EV09 | evasion | both: AI text with a human opening paragraph bolted on | 200 | `c_44090cebeb92` | unsure | 0.044 | HELD |
+| EV10 | evasion | signal two: repeated stanza structure | 200 | `c_c6b8f9ffe4b7` | ai | 0.872 | HELD |
+| FP01 | false_positive | plain, clear human writing with no flourishes | 200 | `c_e408048b912b` | unsure | 0.251 | HELD |
+| FP02 | false_positive | human writing in a formal register | 200 | `c_577b2aab86bc` | unsure | 0.505 | HELD |
+| FP03 | false_positive | a non-native English speaker writing carefully | 200 | `c_dd426ffe691d` | unsure | 0.528 | HELD |
+| FP04 | false_positive | a student essay written to a rubric | 200 | `c_849c09595297` | unsure | 0.263 | HELD |
+| FP05 | false_positive | technical documentation written by a person | 200 | `c_6b68f2eb5f57` | unsure | 0.654 | HELD |
+| FP06 | false_positive | a person imitating a formal template | 200 | `c_c882d6b34a9b` | unsure | 0.509 | HELD |
+| FP07 | false_positive | human writing that repeats a phrase deliberately | 200 | `c_30e8d816fccc` | unsure | 0.583 | HELD |
+| FP08 | false_positive | very short genuine human submission | 200 | `c_d159cc2c2ccd` | unsure | 0.204 | HELD |
+| PI01 | prompt_injection | instruction to ignore the check | 200 | `c_7dd3ed651308` | unsure | 0.158 | HELD |
+| PI02 | prompt_injection | instruction disguised as a system message | 200 | `c_fd86d3ad837b` | human | 0.494 | HELD |
+| PI03 | prompt_injection | instruction wrapped in the writer's voice | 200 | `c_a4335d7fad50` | unsure | 0.116 | HELD |
+| PI04 | prompt_injection | attempt to make the label text hostile | 200 | `c_4a4c974df7af` | unsure | 0.079 | HELD |
+| PI05 | prompt_injection | attempt to inject into the audit log | 200 | `c_70eb29b77c54` | unsure | 0.110 | HELD |
+| PI06 | prompt_injection | instruction plus real human text | 200 | `c_8e94db87a33b` | unsure | 0.164 | HELD |
+| MF01 | malformed | text is only whitespace | 400 | `—` | — | — | HELD |
+| MF02 | malformed | text is a single character | 400 | `—` | — | — | HELD |
+| MF03 | malformed | text is control characters | 200 | `c_e2e241279bba` | unsure | 0.380 | BROKE |
+| MF04 | malformed | text is only punctuation | 200 | `c_23572b364631` | unsure | 0.187 | BROKE |
+| MF05 | malformed | text is a very long single word | 200 | `c_c78b3bd93cec` | unsure | 0.680 | HELD |
+| MF06 | malformed | text is emoji only | 200 | `c_4515e24df38a` | unsure | 0.680 | BROKE |
+| MF07 | malformed | text is right-to-left script | 200 | `c_01ef659b7374` | unsure | 0.680 | HELD |
+| MF08 | malformed | text is 60,000 characters | 400 | `—` | — | — | HELD |
+| RQ01 | malformed | no text field at all | 400 | `—` | — | — | HELD |
+| RQ02 | malformed | no creator_id | 200 | `c_79eae8a7c6c7` | unsure | 0.179 | HELD |
+| RQ03 | malformed | text is a number | 400 | `—` | — | — | HELD |
+| RQ04 | malformed | text is a list | 400 | `—` | — | — | HELD |
+| RQ05 | malformed | text is null | 400 | `—` | — | — | HELD |
+| RQ06 | malformed | creator_id is an object | 200 | `c_c9bdc3fa221d` | unsure | 0.380 | HELD |
+| RQ07 | malformed | body is a JSON array, not an object | 400 | `—` | — | — | HELD |
+| RQ08 | malformed | body is unparseable JSON | 400 | `—` | — | — | HELD |
+| RQ09 | malformed | body is empty | 400 | `—` | — | — | HELD |
+| RQ10 | malformed | body is form-encoded, not JSON | 400 | `—` | — | — | HELD |
+| RQ11 | malformed | body is JSON claiming to be plain text | 400 | `—` | — | — | HELD |
+| RQ12 | malformed | deeply nested JSON | 400 | `—` | — | — | HELD |
+| FL01_01 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_72acb6ce412f` | unsure | 0.380 | HELD |
+| FL01_02 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_524b11ba7015` | unsure | 0.380 | HELD |
+| FL01_03 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_2b2e7b9c40b8` | unsure | 0.380 | HELD |
+| FL01_04 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_f2906390d9d3` | unsure | 0.380 | HELD |
+| FL01_05 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_3f9a6a2aeeb6` | unsure | 0.380 | HELD |
+| FL01_06 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_e3708f6e4343` | unsure | 0.380 | HELD |
+| FL01_07 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_68e18e977568` | unsure | 0.380 | HELD |
+| FL01_08 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_5e03f2a31256` | unsure | 0.380 | HELD |
+| FL01_09 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_3bed3a04f377` | unsure | 0.380 | HELD |
+| FL01_10 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_ec25ef7073e5` | unsure | 0.380 | HELD |
+| FL01_11 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+| FL01_12 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+
+### Before vs after1 vs after2
+
+| | Before | After 1 (route fix) | After 2 (cue fallback) |
+|---|---|---|---|
+| Attacks broke (evasion / FP / injection / malformed / flood) | 1 / 0 / 0 / 4 / 0 | 1 / 0 / 0 / 3 / 0 | **0** / 0 / 0 / 3 / 0 |
+| EV05 (heavily edited AI text) | human (BROKE) | human (BROKE) | **unsure (HELD)** |
+| EV10 (both signals > 0.87) | unsure | unsure | **ai** |
+| Highest false-positive combined score | 0.5935 (FP07) | same | **0.8271 (FP05)**, 0.023 below the AI line |
+| try_labels samples labeled "human" | 3 | 3 | **0** |
+| Criterion 2 spread | 0.445 | 0.445 | 0.3925 |
+
+**Did it help?** Partly. It fixed what it targeted: "ai" is reachable (EV10), EV05 is no longer told it's "most likely written by a person", and broken attacks dropped from 4 to 3. **What it cost:** every false-positive text scored higher, and FP05 (human technical documentation) is now 0.8271, only 0.023 below the AI label, so a slightly different human text would be accused. The plain human samples in try_labels lost the "human" label. That is the trade my production preference argues against: it moves risk onto real writers. If this were real I would keep the change only with a higher AI threshold, which would be a third change to measure.
+
 ## What's Still Broken
 
-- **"ai" label unreachable (criterion 3):** I'd change how the cue signal combines, for example falling back to the two-signal weights when cue = 0 instead of counting 0 as human evidence. I stopped because that's a second change to the scoring, and it could push real writers toward the AI label, so it needs its own before/after measurement.
-- **EV05 labeled human:** the same fix would have moved it to "unsure" (0.302 under two-signal weights). Not done for the same reason.
+- **"ai" label and EV05:** addressed by the stretch improvement above ("ai" now reachable, EV05 now "unsure"). What's still broken is the cost: false positives scored much closer to the AI line (FP05 at 0.8271), and plain human writing can no longer reach "human" in try_labels. Next I'd raise the AI threshold or require a cue phrase for "ai" and measure it. I stopped because that's a third change and I ran out of time.
 - **PI02 labeled human:** I'd re-run it with the instruction removed to show whether the instruction caused the label. I ran out of time.
 - **Junk input still scored (emoji, control characters, punctuation):** I'd reject text with too few real words, before the signals see it. Not done, to keep to one change.
 - **Criterion 4's "no log entry":** this conflicts with the Unit 8 requirement to log rejections. I'd revise the criterion to "returns 400 and logs a rejection, never a decision", but it was written before the requirement existed.
