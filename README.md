@@ -498,15 +498,16 @@ RQ07 (body is a JSON array) crashed with a 500 and is **absent from the log**. T
 
 | | Before | After |
 |---|---|---|
-| RQ07 (JSON array body) | 500 crash, not logged | ___ |
-| MF08 (60,000 chars) | 200, scored | ___ |
-| Criterion 4 (bad input) | 2/3, 2/3, 2/3 | ___ |
-| Attacks broke (evasion / FP / injection / malformed / flood) | 1 / 0 / 0 / 4 / 0 | ___ |
-| Criteria 1, 2, 3, 5 | MET / MET / MISSED / MET | ___ (expected unchanged) |
+| RQ07 (JSON array body) | 500 crash, not logged | 400, logged as `body_not_object` |
+| MF08 (60,000 chars) | 200, scored | 400, logged as `text_too_long` |
+| Criterion 4 (bad input) | 2/3, 2/3, 2/3 | 3/3, 3/3, 3/3 return 400 (but each now writes a rejection entry) |
+| Attacks broke (evasion / FP / injection / malformed / flood) | 1 / 0 / 0 / 4 / 0 | 1 / 0 / 0 / 3 / 0 (auto-marked BROKE: 1 → 0) |
+| Criterion 1 (my writing labeled AI) | 0/9, 0/9, 0/9 | 0/9, 0/9, 0/9 (unchanged) |
+| Criteria 2, 3, 5 | MET / MISSED / MET | not re-run: the fix only touches the route, and these don't depend on it (`try_labels.py` calls the scoring code directly) |
 
-Full results: `results/attack_run_..._after.md` and `results/run_..._after.md`.
+Full results: `results/attack_run_2026-11-09_0107_after.md` and `results/run_2026-11-09_0108_after.md`.
 
-**Did it help?** ___ (one sentence)
+**Did it help?** Yes, for what it targeted: the crash is gone (RQ07 now gets a clean 400 and is logged instead of leaving no trace), and all three bad inputs in criterion 4 now return 400. It didn't change any signal or label, so evasion, false positives and injection came out exactly the same. Criterion 4 is still MISSED on its "no log entry" part, because rejections are logged by design in Unit 8.
 
 **What it didn't fix:** emoji, control characters and right-to-left text are under 10,000 characters and are still JSON objects, so they still get scored. "ai" is still unreachable. Criterion 4's "no log entry" part still conflicts with logging rejections.
 
@@ -520,4 +521,3 @@ Full results: `results/attack_run_..._after.md` and `results/run_..._after.md`.
 - **Criterion 1 tested 9 of 10 pieces:** I ran out of time.
 
 **The trade I'd make in production:** I'd lean toward fewer wrong accusations and keep the wide unsure band, because a wrong accusation costs a real writer far more than a missed detection costs the site. The cost of that choice falls on the site and its readers, who will sometimes see AI text labeled "unsure" or even "human", like EV05.
-
