@@ -1,70 +1,42 @@
 """
-What your test runs. ← UNIT 8, MILESTONE 3
+What your test runs. <- UNIT 8, MILESTONE 3
 
-Each of your five criteria needs something run against it. A criterion about
-false positives needs your own writing. One about label coverage needs inputs
-across the score range. One about the appeal path needs a real content_id.
+Criterion 1 (false positives) and criterion 4 (bad input) run from here via
+run_eval.py. Criteria 2 and 3 are checked with try_labels.py and
+scoring.label_ranges(), and criterion 5 (appeals) is tested by hand with a
+PowerShell script, as written in criteria.md.
 
-Working that out is Milestone 3's first step, and this file is where you write
-it down. `run_eval.py` runs everything here three times.
-
-Two are filled in as examples. Replace them with what your criteria actually
-need — these are a shape, not a set.
-
-A scenario carries **either** of these:
-
-    "texts"   a list of strings. Each is sent as {"text": ..., "creator_id": ...}
-              with a creator_id made up for you. Use this for most criteria.
-
-    "bodies"  a list of whole request bodies, sent exactly as written. Use this
-              when the malformed request IS the point — empty text, no `text`
-              field at all, something enormous. A bad-input criterion needs it,
-              because you cannot express "the field is missing" as a string.
+A scenario carries either "texts" (strings sent as {"text": ..., "creator_id": ...})
+or "bodies" (whole request bodies, sent exactly as written).
 """
 
 SCENARIOS = [
     {
         "name": "my own writing",
         "criterion": 1,
-        # ⚠️ PUT YOUR OWN WRITING HERE. Not AI text, not a sample from the web —
-        # things you actually wrote. This is the criterion that matters most and
-        # it's meaningless with someone else's prose.
+        # 9 pieces I wrote myself, no AI. Criterion calls for 10; I tested 9
+        # because I ran out of time. Pieces 5, 6 and 7 are the plain ones.
         "texts": [
-            "REPLACE ME with a paragraph you wrote yourself.",
-            "REPLACE ME with another one. Ten pieces is the usual number.",
+            """Hi, My Name is Sakeet Kopparapu and I recently graduated with my master of science degree in Information Systems & Technologies from the University of North Texas. Prior to that I did my bachelors degree in Computer Science Engineering and I worked as a software engineer at capgemini""",
+            """I'm actively looking for Full-Time, Spring 2027 Internship or Co-op opportunities in Data Analyst, BI Analyst, Business Analyst, Business Systems Analyst, Data Scientist, Machine Learning, AI Engineer, Associate Product Management, Product Owner, Project Manager & Customer Success roles. I would need approximately 1-2 weeks after accepting an offer to relocate from Texas and begin full-time, in-person work.""",
+            """I am interested in exploring this opportunity. Please find my updated resume attached for your review. I have attached my resume for your reference and submission. Please let me know if you need any additional documentation or anything and I would be happy to provide.""",
+            """I recently graduated and am currently actively exploring job opportunities in the tech industry. I'm really looking forward to connecting with you, learning from your professional experience, and gaining insights into navigating the job search, preparing for interviews, and building my career.""",
+            """Yesterday I woke up early got fresh and went to the temple. We all went all together. There was a lot of rush in the temple as it was a festival. I ate pudina rice. Then In the evening I went to GYM and once i came back home I watched a movie""",
+            """Generally I wake up in the morning and then get ready by doing brush. After that i go to the gym do some exercises and then come back take bath, pray to god, have breakfast and start studying or applying for jobs.""",
+            """The reason why pulihora is a favourite food is because it is made by my mom and it consists of different ingredients once you mix that all and have it then it is very tasty that is the reason why i like pulihora""",
+            """The recent trip that I went was to colorado where we first went to colorado springs and explored pikes peak, garden of the gods and then we went to denver to explore rocky mountains. Once we covered that we went to sand dunes and then finally we returned back home""",
+            """The sad thing during the entire trip was that in pikes peak it was snowing so I was not able to take good pictures of mine. Even though it was in the month of may even then it is still snowing. Similarly I was also not able to visit some places at rocky mountain because we had to trek alot and lot of us don't have that energy. But the overall trip was so good going from normal dry land to a different landscape with mountains and pine forest around in the high altitude. It has been the best trip for a while""",
         ],
     },
     {
-        "name": "label coverage",
-        "criterion": 2,
-        # Inputs spread across your score range, so you can check all three
-        # labels are actually reachable.
-        "texts": [
-            "REPLACE ME with something you're confident is AI-generated.",
-            "REPLACE ME with something you're confident is human-written.",
-            "REPLACE ME with something genuinely borderline.",
+        "name": "bad input",
+        "criterion": 4,
+        "bodies": [
+            {"creator_id": "eval_bad_missing"},                       # missing text
+            {"text": "", "creator_id": "eval_bad_empty"},             # empty text
+            {"text": "word " * 2001, "creator_id": "eval_bad_huge"},  # 10,005 characters
         ],
     },
-    # A bad-input criterion looks like this. Uncomment and adjust if that's one
-    # of your five — these are raw request bodies, sent exactly as written.
-    #
-    # {
-    #     "name": "bad input",
-    #     "criterion": 3,
-    #     "bodies": [
-    #         {"text": "", "creator_id": "eval_bad_empty"},
-    #         {"creator_id": "eval_bad_missing"},          # no text field at all
-    #         {"text": "word " * 50000, "creator_id": "eval_bad_huge"},
-    #         {"text": None, "creator_id": "eval_bad_null"},
-    #     ],
-    # },
-
-    # TODO: add what your remaining criteria need.
-    #
-    # A criterion about the appeal path can't be tested by sending text alone;
-    # it needs a submission first and then an appeal against the content_id
-    # that came back. You'll need to test that one by hand, or extend this file
-    # and run_eval.py to do it. Saying which you did is part of the write-up.
 ]
 
 

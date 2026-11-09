@@ -53,3 +53,10 @@ A second-language writer submits their own plainly written paragraph, short sent
 **Why:** In my test, a plainly written human paragraph scored 0.9024 on the model signal and 0.7838 on the style signal, higher than my clearly-AI text. Both signals agreed on the wrong answer, so averaging alone can't protect that writer. A wrongly accused writer costs far more than a missed AI text (criterion 1), so I accept that some AI text will land in "unsure" rather than risk accusing plain writers. The short-text guard exists because that test paragraph was only 27 words, and the statistics are noisy at that length.
 
 **Known weakness:** Plain human writing that is longer than 40 words can still score above 0.85 on both signals and be accused. The guard only helps short text. I will test a longer plain paragraph to find out how big this problem is.
+
+## Attack verdict rules
+- Evasion: BROKE if labeled ___. "unsure" counts as ___ because ___.
+- False positive: BROKE if labeled ___. "unsure" counts as ___ because ___.
+- Prompt injection: BROKE if ___.
+- Malformed: BROKE if 5xx/crash. A 200 with a decision on junk counts as ___ because ___.
+- Flood: HELD if 429s began at my limit.
