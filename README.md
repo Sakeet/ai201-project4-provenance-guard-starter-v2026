@@ -12,6 +12,10 @@ How to run it: see [RUNNING.md](RUNNING.md).
 2. **`GET /content/<id>`**: returns one item's current status.
 3. **A verified-human path** (`POST /verify`): a writer earns a credential through an extra step, and it shows on their work.
 
+### Unit 8 stretch (declared before building)
+
+4. **A second measured improvement.** When a text has no cue phrases (`cue_score` = 0), `scoring.py::combine_signals` will fall back to the two-signal weights (0.6 model / 0.4 style) instead of counting the 0 as evidence of "human" at weight 0.25. This follows my diagnosis of criterion 3 and EV05. I'll measure it with a third attack run (`--label after2`), a third eval run, and `try_labels.py` ×3, in the same table format, and say whether it helped.
+
 ---
 
 ## What This Does
@@ -570,6 +574,69 @@ RQ07 (body is a JSON array) crashed with a 500 and is **absent from the log**. T
 | Criteria 2, 3, 5 | MET / MISSED / MET | not re-run: the fix only touches the route, and these don't depend on it (`try_labels.py` calls the scoring code directly) |
 
 Full results: `results/attack_run_2026-11-09_0107_after.md` and `results/run_2026-11-09_0108_after.md`.
+
+### Every attack, with its outcome and verdict (after)
+
+From `results/attack_run_2026-11-09_0107_after.md`, same format and same verdict rules as the before table. **52 held, 4 broke after (it was 51 held, 5 broke before).** The changes: RQ07 went from 500 to 400 (BROKE → HELD), and MF08 went from 200 to 400 (still HELD, now refused instead of scored).
+
+| ID | Family | Targeting | Status | Content ID | Guess | Confidence | Verdict |
+|---|---|---|---|---|---|---|---|
+| EV01 | evasion | signal two: typos raise word variety | 200 | `c_79545f454d57` | unsure | 0.392 | HELD |
+| EV02 | evasion | signal two: broken-up sentences raise length spread | 200 | `c_14df5b36566c` | unsure | 0.226 | HELD |
+| EV03 | evasion | signal two: a pasted quotation changes the shape | 200 | `c_e8977d124dca` | unsure | 0.117 | HELD |
+| EV04 | evasion | signal one: unusual words raise perplexity | 200 | `c_ae96f7878464` | unsure | 0.007 | HELD |
+| EV05 | evasion | both signals: heavy human editing pass | 200 | `c_75494bca49cb` | human | 0.547 | BROKE |
+| EV06 | evasion | signal two: one very long sentence and one very short | 200 | `c_76dcca1c6a99` | unsure | 0.232 | HELD |
+| EV07 | evasion | signal two: padding with punctuation | 200 | `c_fdebca128936` | unsure | 0.271 | HELD |
+| EV08 | evasion | signal one: text below the token window | 200 | `c_765e54925332` | unsure | 0.380 | HELD |
+| EV09 | evasion | both: AI text with a human opening paragraph bolted on | 200 | `c_2faedacc22a3` | unsure | 0.044 | HELD |
+| EV10 | evasion | signal two: repeated stanza structure | 200 | `c_26eae5e3950e` | unsure | 0.404 | HELD |
+| FP01 | false_positive | plain, clear human writing with no flourishes | 200 | `c_4f06f6f6dd6f` | unsure | 0.062 | HELD |
+| FP02 | false_positive | human writing in a formal register | 200 | `c_09745d7141c1` | unsure | 0.128 | HELD |
+| FP03 | false_positive | a non-native English speaker writing carefully | 200 | `c_8adbd5b2a51d` | unsure | 0.146 | HELD |
+| FP04 | false_positive | a student essay written to a rubric | 200 | `c_c713fb5a109b` | unsure | 0.263 | HELD |
+| FP05 | false_positive | technical documentation written by a person | 200 | `c_21e476661842` | unsure | 0.241 | HELD |
+| FP06 | false_positive | a person imitating a formal template | 200 | `c_fbee0e7ed2e9` | unsure | 0.132 | HELD |
+| FP07 | false_positive | human writing that repeats a phrase deliberately | 200 | `c_1a42a0bfba5e` | unsure | 0.187 | HELD |
+| FP08 | false_positive | very short genuine human submission | 200 | `c_8095a6d1b4b1` | unsure | 0.380 | HELD |
+| PI01 | prompt_injection | instruction to ignore the check | 200 | `c_e178ed70dfed` | unsure | 0.369 | HELD |
+| PI02 | prompt_injection | instruction disguised as a system message | 200 | `c_a5552dff323e` | human | 0.621 | HELD |
+| PI03 | prompt_injection | instruction wrapped in the writer's voice | 200 | `c_e2bdeeb10b90` | unsure | 0.163 | HELD |
+| PI04 | prompt_injection | attempt to make the label text hostile | 200 | `c_4940129d7201` | unsure | 0.310 | HELD |
+| PI05 | prompt_injection | attempt to inject into the audit log | 200 | `c_a43fe7c960c2` | unsure | 0.332 | HELD |
+| PI06 | prompt_injection | instruction plus real human text | 200 | `c_af65600ed8a8` | unsure | 0.127 | HELD |
+| MF01 | malformed | text is only whitespace | 400 | `—` | — | — | HELD |
+| MF02 | malformed | text is a single character | 400 | `—` | — | — | HELD |
+| MF03 | malformed | text is control characters | 200 | `c_0c4650ddf8c4` | unsure | 0.380 | BROKE |
+| MF04 | malformed | text is only punctuation | 200 | `c_7c2904269209` | unsure | 0.380 | BROKE |
+| MF05 | malformed | text is a very long single word | 200 | `c_35f546addfeb` | unsure | 0.298 | HELD |
+| MF06 | malformed | text is emoji only | 200 | `c_7742dfb9ae5f` | unsure | 0.497 | BROKE |
+| MF07 | malformed | text is right-to-left script | 200 | `c_aa1b58aa446d` | unsure | 0.416 | HELD |
+| MF08 | malformed | text is 60,000 characters | 400 | `—` | — | — | HELD |
+| RQ01 | malformed | no text field at all | 400 | `—` | — | — | HELD |
+| RQ02 | malformed | no creator_id | 200 | `c_e83ea3c4f7f5` | unsure | 0.380 | HELD |
+| RQ03 | malformed | text is a number | 400 | `—` | — | — | HELD |
+| RQ04 | malformed | text is a list | 400 | `—` | — | — | HELD |
+| RQ05 | malformed | text is null | 400 | `—` | — | — | HELD |
+| RQ06 | malformed | creator_id is an object | 200 | `c_442d2f167613` | unsure | 0.380 | HELD |
+| RQ07 | malformed | body is a JSON array, not an object | 400 | `—` | — | — | HELD |
+| RQ08 | malformed | body is unparseable JSON | 400 | `—` | — | — | HELD |
+| RQ09 | malformed | body is empty | 400 | `—` | — | — | HELD |
+| RQ10 | malformed | body is form-encoded, not JSON | 400 | `—` | — | — | HELD |
+| RQ11 | malformed | body is JSON claiming to be plain text | 400 | `—` | — | — | HELD |
+| RQ12 | malformed | deeply nested JSON | 400 | `—` | — | — | HELD |
+| FL01_01 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_13c7cb61d7e5` | unsure | 0.380 | HELD |
+| FL01_02 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_d4bfb4cb55fd` | unsure | 0.380 | HELD |
+| FL01_03 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_61ddc59b7427` | unsure | 0.380 | HELD |
+| FL01_04 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_932a059290eb` | unsure | 0.380 | HELD |
+| FL01_05 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_fa8b43bd95dd` | unsure | 0.380 | HELD |
+| FL01_06 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_6b4247f0e61b` | unsure | 0.380 | HELD |
+| FL01_07 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_83bc5ca2a11c` | unsure | 0.380 | HELD |
+| FL01_08 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_9f7a56a424e0` | unsure | 0.380 | HELD |
+| FL01_09 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_33b97e961d89` | unsure | 0.380 | HELD |
+| FL01_10 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_56c943e9883e` | unsure | 0.380 | HELD |
+| FL01_11 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+| FL01_12 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
 
 **Did it help?** Yes, for what it targeted: the crash is gone (RQ07 now gets a clean 400 and is logged instead of leaving no trace), and all three bad inputs in criterion 4 now return 400. It didn't change any signal or label, so evasion, false positives and injection came out exactly the same. Criterion 4 is still MISSED on its "no log entry" part, because rejections are logged by design in Unit 8.
 
