@@ -319,6 +319,69 @@ Full results: `results/attack_run_2026-11-07_2058_before.md` (56 attacks, 1 auto
 
 MF05, MF07 and MF08 are real text, so they're HELD under my malformed rule. MF08 (60,000 characters) is over my own 10,000-character limit, so it counts against criterion 4 instead.
 
+### Every attack, with its outcome and verdict (before)
+
+From `results/attack_run_2026-11-07_2058_before.md`. The script's "Score" column is the confidence value; full scores for each attack are in that file.
+
+| ID | Family | Targeting | Status | Content ID | Guess | Confidence | Verdict |
+|---|---|---|---|---|---|---|---|
+| EV01 | evasion | signal two: typos raise word variety | 200 | `c_8c903553596c` | unsure | 0.392 | HELD |
+| EV02 | evasion | signal two: broken-up sentences raise length spread | 200 | `c_047d89310e34` | unsure | 0.226 | HELD |
+| EV03 | evasion | signal two: a pasted quotation changes the shape | 200 | `c_c43b4f5e05f0` | unsure | 0.117 | HELD |
+| EV04 | evasion | signal one: unusual words raise perplexity | 200 | `c_9b65d7d897f8` | unsure | 0.007 | HELD |
+| EV05 | evasion | both signals: heavy human editing pass | 200 | `c_f11752ba947c` | human | 0.547 | BROKE |
+| EV06 | evasion | signal two: one very long sentence and one very short | 200 | `c_ca56931252ab` | unsure | 0.232 | HELD |
+| EV07 | evasion | signal two: padding with punctuation | 200 | `c_cfd291742fd7` | unsure | 0.271 | HELD |
+| EV08 | evasion | signal one: text below the token window | 200 | `c_ab829211ac09` | unsure | 0.380 | HELD |
+| EV09 | evasion | both: AI text with a human opening paragraph bolted on | 200 | `c_f7b29c9db610` | unsure | 0.044 | HELD |
+| EV10 | evasion | signal two: repeated stanza structure | 200 | `c_16033342a0f3` | unsure | 0.404 | HELD |
+| FP01 | false_positive | plain, clear human writing with no flourishes | 200 | `c_d42a8d820a32` | unsure | 0.062 | HELD |
+| FP02 | false_positive | human writing in a formal register | 200 | `c_600addcc49e9` | unsure | 0.128 | HELD |
+| FP03 | false_positive | a non-native English speaker writing carefully | 200 | `c_63db83c3081c` | unsure | 0.146 | HELD |
+| FP04 | false_positive | a student essay written to a rubric | 200 | `c_1b7c4dcf1f98` | unsure | 0.263 | HELD |
+| FP05 | false_positive | technical documentation written by a person | 200 | `c_fd553644cada` | unsure | 0.241 | HELD |
+| FP06 | false_positive | a person imitating a formal template | 200 | `c_d697e98056c7` | unsure | 0.132 | HELD |
+| FP07 | false_positive | human writing that repeats a phrase deliberately | 200 | `c_c98291a18727` | unsure | 0.187 | HELD |
+| FP08 | false_positive | very short genuine human submission | 200 | `c_6c17c3d2ad2e` | unsure | 0.380 | HELD |
+| PI01 | prompt_injection | instruction to ignore the check | 200 | `c_b5d3177a04a8` | unsure | 0.369 | HELD |
+| PI02 | prompt_injection | instruction disguised as a system message | 200 | `c_1369bbb817e2` | human | 0.621 | HELD |
+| PI03 | prompt_injection | instruction wrapped in the writer's voice | 200 | `c_b70f23c3ad68` | unsure | 0.163 | HELD |
+| PI04 | prompt_injection | attempt to make the label text hostile | 200 | `c_818ff03cecba` | unsure | 0.310 | HELD |
+| PI05 | prompt_injection | attempt to inject into the audit log | 200 | `c_3d0037c0a81b` | unsure | 0.332 | HELD |
+| PI06 | prompt_injection | instruction plus real human text | 200 | `c_5dfbfc4fac3d` | unsure | 0.127 | HELD |
+| MF01 | malformed | text is only whitespace | 400 | `—` | — | — | HELD |
+| MF02 | malformed | text is a single character | 400 | `—` | — | — | HELD |
+| MF03 | malformed | text is control characters | 200 | `c_8fb7a66409a9` | unsure | 0.380 | BROKE |
+| MF04 | malformed | text is only punctuation | 200 | `c_46adecd4ae45` | unsure | 0.380 | BROKE |
+| MF05 | malformed | text is a very long single word | 200 | `c_0914d8d10f91` | unsure | 0.298 | HELD |
+| MF06 | malformed | text is emoji only | 200 | `c_e67ef18e160b` | unsure | 0.497 | BROKE |
+| MF07 | malformed | text is right-to-left script | 200 | `c_318e19173b56` | unsure | 0.416 | HELD |
+| MF08 | malformed | text is 60,000 characters | 200 | `c_c5686f8b3fe6` | unsure | 0.283 | HELD |
+| RQ01 | malformed | no text field at all | 400 | `—` | — | — | HELD |
+| RQ02 | malformed | no creator_id | 200 | `c_93fe4c820544` | unsure | 0.380 | HELD |
+| RQ03 | malformed | text is a number | 400 | `—` | — | — | HELD |
+| RQ04 | malformed | text is a list | 400 | `—` | — | — | HELD |
+| RQ05 | malformed | text is null | 400 | `—` | — | — | HELD |
+| RQ06 | malformed | creator_id is an object | 200 | `c_5c84fe3bbca8` | unsure | 0.380 | HELD |
+| RQ07 | malformed | body is a JSON array, not an object | 500 | `—` | — | — | BROKE |
+| RQ08 | malformed | body is unparseable JSON | 400 | `—` | — | — | HELD |
+| RQ09 | malformed | body is empty | 400 | `—` | — | — | HELD |
+| RQ10 | malformed | body is form-encoded, not JSON | 400 | `—` | — | — | HELD |
+| RQ11 | malformed | body is JSON claiming to be plain text | 400 | `—` | — | — | HELD |
+| RQ12 | malformed | deeply nested JSON | 400 | `—` | — | — | HELD |
+| FL01_01 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_06b37671fdcc` | unsure | 0.380 | HELD |
+| FL01_02 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_8ea0dc1f329b` | unsure | 0.380 | HELD |
+| FL01_03 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_03bc15682508` | unsure | 0.380 | HELD |
+| FL01_04 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_35bd3030ad72` | unsure | 0.380 | HELD |
+| FL01_05 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_657697f8b158` | unsure | 0.380 | HELD |
+| FL01_06 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_809d6af2ae5a` | unsure | 0.380 | HELD |
+| FL01_07 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_4186e53fd7b6` | unsure | 0.380 | HELD |
+| FL01_08 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_16191e0dcac8` | unsure | 0.380 | HELD |
+| FL01_09 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_17f1231b4820` | unsure | 0.380 | HELD |
+| FL01_10 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_a100427aba72` | unsure | 0.380 | HELD |
+| FL01_11 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+| FL01_12 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+
 **Worst outcome:** EV05. It was AI text after a heavy human editing pass, and my service told readers it was "most likely written by a person." That's the one label that vouches for a text, and it was wrong.
 
 **Not tested:** I didn't re-run PI02 with the instruction removed, so I can't show whether the instruction caused its "human" label.
@@ -485,6 +548,7 @@ RQ07 (body is a JSON array) crashed with a 500 and is **absent from the log**. T
 - **Criterion 3:** Stage: the combining rule. Mechanism: the three-signal weights are 0.45 model + 0.30 style + 0.25 cue. When a text has no cue phrases (cue = 0), the highest possible combined score is 0.45 + 0.30 = 0.75, below the 0.85 AI threshold. EV10 had model 0.9792 and style 0.8707 but cue 0, so it scored 0.7018 and stayed "unsure". The AI label can only be reached by text that also uses my fixed list of transition phrases.
 - **Criterion 4:** Stage: the route. Mechanism: `submit()` checks that `text` is a non-empty string but never checks its length, so the 10,005-character text went straight to the signals and was scored. Also, my criterion says "no log entry", but Milestone 1 of Unit 8 required me to log rejections with `audit.log_rejection`, so that half of the criterion now conflicts with a required feature. Missing and empty text return 400 but now write a rejection entry.
 - **RQ07 crash:** Stage: the route. Mechanism: the first line of `submit()` is `payload = request.get_json(silent=True) or {}`. A JSON array parses fine and a non-empty list is truthy, so `or {}` doesn't replace it. The next line calls `payload.get("text")` on a list, which raises `AttributeError` and returns a 500.
+- **MF03, MF04, MF06 (control characters, punctuation, emoji) scored as writing:** Stage: the route. Mechanism: `submit()` only checks that `text` is a non-empty string, so input with no real words passes straight to the signals. Signal one still returns a number (0.0 for control characters, 0.9969 for emoji), and because these are under 40 words my combining rule forces "unsure", so the service logs a normal-looking decision on something that isn't writing.
 - **EV05 and PI02 labeled human:** Stage: the combining rule. Mechanism: neither text used cue phrases, so cue = 0 at weight 0.25 counts as evidence of "human" and pulls the combined score down. EV05: 0.45×0.3212 + 0.30×0.2738 + 0.25×0 = 0.2267 (human). With my old two-signal weights (0.6/0.4) it would have scored 0.302, which is "unsure". PI02 (model 0.2044, style 0.3253) scores about 0.25 under either weighting, so for PI02 the low signal scores themselves are also part of the cause.
 - **Pattern across misses:** two root causes, not five separate failures. (1) **The route doesn't validate input:** RQ07's crash, criterion 4's long text, and junk inputs getting scored. (2) **A cue score of 0 at weight 0.25 distorts the combining rule:** it caps every cue-free text at 0.75, so "ai" is unreachable (criterion 3), and it drags borderline AI text down into "human" (EV05).
 
@@ -508,6 +572,8 @@ RQ07 (body is a JSON array) crashed with a 500 and is **absent from the log**. T
 Full results: `results/attack_run_2026-11-09_0107_after.md` and `results/run_2026-11-09_0108_after.md`.
 
 **Did it help?** Yes, for what it targeted: the crash is gone (RQ07 now gets a clean 400 and is logged instead of leaving no trace), and all three bad inputs in criterion 4 now return 400. It didn't change any signal or label, so evasion, false positives and injection came out exactly the same. Criterion 4 is still MISSED on its "no log entry" part, because rejections are logged by design in Unit 8.
+
+**What it cost:** any genuine submission over 10,000 characters (roughly 1,700 words, like a long essay or a chapter) is now refused with a 400, and the writer has to split it. Before, it was scored, though only the first 400 tokens were actually read by signal one. Every bad request also now adds a rejection entry to the log, so the log grows faster under junk traffic.
 
 **What it didn't fix:** emoji, control characters and right-to-left text are under 10,000 characters and are still JSON objects, so they still get scored. "ai" is still unreachable. Criterion 4's "no log entry" part still conflicts with logging rejections.
 
