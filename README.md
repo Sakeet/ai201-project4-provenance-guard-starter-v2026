@@ -541,11 +541,19 @@ RQ07 (body is a JSON array) crashed with a 500 and is **absent from the log**. T
 | 5. Appeals → under_review, unknown → 404 | 5/5 + 404 | 5/5 + 404 | 5/5 + 404 | 5/5 + 404 | MET |
 
 **Notes:**
-- **Criterion 1:** tested 9 of my own pieces, not 10 (ran out of time). All 9 came back "unsure" in every trial.
+- **Criterion 1:** tested 9 of my own pieces, not 10 (ran out of time). All 9 came back "unsure" in every trial. Even if the untested 10th piece had been labeled AI, the count would be 1 of 10, which still meets the target of at most 1, so the verdict doesn't depend on the missing piece.
 - **Criterion 2:** AI mean 0.7025 (ai_try 0.7199, ai_a 0.6851); human mean 0.2573 (human_try 0.2348, human_a 0.2272, human_b 0.31). Identical in all 3 runs. My criterion says 3 AI samples, but `try_labels.py` has only 2.
 - **Criterion 3:** `label_ranges()` = human 0.00–0.30, unsure 0.30–0.85, AI 0.85–1.00, so there are no gaps. But no real submission reached "ai". The highest combined score anywhere was 0.7486, from MF06 (emoji only). The highest from real AI-style text was EV10 at 0.7018, even with model 0.9792 and style 0.8707.
 - **Criterion 4:** missing and empty text → 400. The 10,005-character text → 200, scored "unsure".
-- **Criterion 5:** `Trial 1/2/3 : 5/5 under_review, unknown id -> 404`.
+- **Criterion 5:** `Trial 1/2/3 : 5/5 under_review, unknown id -> 404`. The appeals also appear in the audit log (last 3 appeal entries, from `GET /log`):
+
+```json
+[
+    {"content_id": "c_2b39c2ee8a2d", "creator_id": "appeal_t3", "event": "appeal", "reasoning": "I wrote this myself.", "status": "under_review", "timestamp": "2026-11-09T06:26:17+00:00"},
+    {"content_id": "c_64fe3cce07c3", "creator_id": "appeal_t3", "event": "appeal", "reasoning": "I wrote this myself.", "status": "under_review", "timestamp": "2026-11-09T06:26:17+00:00"},
+    {"content_id": "c_227b183d7d0f", "creator_id": "appeal_t3", "event": "appeal", "reasoning": "I wrote this myself.", "status": "under_review", "timestamp": "2026-11-09T06:26:18+00:00"}
+]
+```
 
 ### Diagnoses (stage + mechanism)
 
@@ -654,13 +662,13 @@ Declared in the README before I built it (see "Unit 8 stretch" near the top).
 
 ### Third run log (after2)
 
-Criteria 1 and 4: `run_eval.py --label after2` → `results/run_2026-11-09_0119_after2.md`. Criteria 2 and 3: `try_labels.py` ×3 plus the after2 attack run.
+Criteria 1 and 4: `run_eval.py --label after2` → `results/run_2026-11-09_0119_after2.md`. Criteria 2 and 3: `try_labels.py` ×3, plus the full after2 attack run and two single-attack re-runs of EV10 and PI02 (`python run_attacks.py --set attack_set\attack_set --id EV10`, saved under `results/attack_run_2026-11-09_0127.md`).
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
 | 1. My writing labeled AI | ≤ 1 of 10 | 0/9 | 0/9 | 0/9 | MET (on 9 pieces) |
 | 2. Score spread (mean AI − mean human) | ≥ 0.30 | 0.3925 | 0.3925 | 0.3925 | MET (down from 0.445) |
-| 3. All three labels reachable | 3 of 3 | 3/3 via /submit (EV10 "ai", PI02 "human") | same (deterministic) | same | MET, see note |
+| 3. All three labels reachable | 3 of 3 | 3/3 (full after2 run: EV10 "ai", PI02 "human") | 3/3 (`--id EV10`, `--id PI02` re-run) | 3/3 (`--id EV10`, `--id PI02` re-run) | MET, see note |
 | 4. Bad input → 400, no log entry | 3 of 3 | 400 ×3, logged | 400 ×3, logged | 400 ×3, logged | MISSED (log part) |
 | 5. Appeals | 5/5 + 404 | not re-run | not re-run | not re-run | MET (unchanged; this change doesn't touch /appeal) |
 
